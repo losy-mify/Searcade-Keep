@@ -26,7 +26,7 @@ jobs:
         run: cp private/searcade_keep.py searcade_keep.py
 
       - name: 🐍 安装 Python 依赖
-        run: pip install requests --quiet
+        run: pip install requests[socks] --quiet
 
       - name: 🚀 运行保活脚本
         env:
