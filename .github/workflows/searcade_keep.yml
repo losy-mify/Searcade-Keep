@@ -1,0 +1,56 @@
+name: Searcade Keep
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 拉取私库脚本
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/Searcade-Keep-Private
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: private
+
+      - name: 📂 复制脚本到工作目录
+        run: cp private/searcade_keep.py searcade_keep.py
+
+      - name: 🐍 安装 Python 依赖
+        run: pip install requests --quiet
+
+      - name: 🚀 运行保活脚本
+        env:
+          SEARCADE_ACCOUNT: ${{ secrets.SEARCADE_ACCOUNT }}
+          TG_BOT: ${{ secrets.TG_BOT }}
+        run: python3 searcade_keep.py
+
+      - name: 🧽 清理进程和临时文件
+        if: always()
+        run: |
+          pkill -f sing-box || true
+          pkill -f python || true
+          rm -f sing-box sing-box-config.json sing-box.log searcade_keep.py
+
+      - name: 🧹 清理旧运行记录
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh run list --repo ${{ github.repository }} --workflow="${{ github.workflow }}" --limit=100 --json databaseId --jq '.[].databaseId')
+          count=0
+          for run_id in $runs; do
+            count=$((count + 1))
+            if [ $count -gt 1 ]; then
+              gh run delete $run_id --repo ${{ github.repository }} || true
+            fi
+          done
